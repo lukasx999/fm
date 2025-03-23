@@ -10,7 +10,6 @@
 
 #include "fm.h"
 
-#define ARRAY_LEN(arr) (sizeof(arr) / sizeof *(arr))
 
 
 
@@ -28,18 +27,6 @@ static const char *filetype_repr(unsigned char filetype) {
         default:
             assert(!"unknown filetype");
     }
-}
-
-static struct stat
-direntry_statbuf(const char *dirname, const char *entry_name) {
-
-    char pathbuf[PATH_MAX] = { 0 };
-    snprintf(pathbuf, ARRAY_LEN(pathbuf), "%s/%s", dirname, entry_name);
-
-    struct stat statbuf = { 0 };
-    stat(pathbuf, &statbuf);
-
-    return statbuf;
 }
 
 static size_t dir_get_filecount(DIR *dir) {
@@ -62,18 +49,26 @@ static Directory read_dir(const char *dir) {
     assert(entries != NULL);
     size_t i = 0;
 
-    struct dirent *entry;
+    struct dirent *entry = NULL;
     while ((entry = readdir(dirp)) != NULL) {
 
-        struct stat statbuf = direntry_statbuf(dir, entry->d_name);
         const char *type = filetype_repr(entry->d_type);
 
         Entry e = {
-            .name  = { 0 },
-            .type  = type,
-            .size  = statbuf.st_size,
-            .dtype = entry->d_type,
+            .name    = { 0 },
+            .abspath = { 0 },
+            .type    = type,
         };
+
+        strncpy(e.abspath, dir, ARRAY_LEN(e.abspath));
+        strncat(e.abspath, "/", ARRAY_LEN(e.abspath));
+        strncat(e.abspath, entry->d_name, ARRAY_LEN(e.abspath));
+
+        struct stat statbuf = { 0 };
+        stat(e.abspath, &statbuf);
+
+        e.size = statbuf.st_size;
+        e.mode = statbuf.st_mode;
 
         // d_name cannot be used as its free'd by closedir()
         strncpy(e.name, entry->d_name, ARRAY_LEN(e.name));
@@ -145,7 +140,7 @@ void fm_go_back(FileManager *fm) {
 void fm_cd(FileManager *fm) {
     const Entry *entry = &fm->dir.entries[fm->cursor];
 
-    if (entry->dtype != DT_DIR)
+    if (strcmp(entry->type, filetype_repr(DT_DIR)))
         return;
 
     const char *subdir = entry->name;
@@ -160,4 +155,12 @@ void fm_go_up(FileManager *fm) {
 void fm_go_down(FileManager *fm) {
     if (fm->cursor != fm->dir.size - 1)
         fm->cursor++;
+}
+
+void fm_select(FileManager *fm) {
+    Entry *entry = fm_get_current(fm);
+}
+
+Entry *fm_get_current(const FileManager *fm) {
+    return &fm->dir.entries[fm->cursor];
 }
