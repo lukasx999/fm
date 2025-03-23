@@ -59,7 +59,13 @@ static void draw_topbar(const FileManager *fm) {
     standend();
 }
 
-static void draw_entries(const FileManager *fm, int off_y, int off_x) {
+static void draw_entries(
+    const FileManager *fm,
+    int off_y,
+    int off_x,
+    int height,
+    int width
+) {
 
     const Directory *dir = &fm->dir;
 
@@ -72,6 +78,13 @@ static void draw_entries(const FileManager *fm, int off_y, int off_x) {
         mvprintw(i + off_y, off_x, "%s ", e->name);
         printw("%lu ", e->size);
         printw("%s", e->type);
+
+        int x, y;
+        getyx(stdscr, y, x);
+        (void) y;
+
+        for (int _=0; _ < width - x; ++_)
+            printw(" ");
 
         standend();
     }
@@ -98,7 +111,7 @@ int main(void) {
 
         clear();
         draw_topbar(&fm);
-        draw_entries(&fm, 2, 2);
+        draw_entries(&fm, 2, 2, 10, 30);
         refresh();
 
         int c = getch();

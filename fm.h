@@ -8,9 +8,11 @@
 
 #define ARRAY_LEN(arr) (sizeof(arr) / sizeof *(arr))
 
+#define MAX_SELECT 5
+
 typedef struct {
     char name[NAME_MAX];
-    char abspath[NAME_MAX];
+    char abspath[PATH_MAX];
     const char *type;
     size_t size;
     unsigned int mode;
@@ -25,6 +27,8 @@ typedef struct {
     size_t cursor;
     char cwd[PATH_MAX];
     Directory dir;
+    const char *selected[MAX_SELECT];
+    size_t selected_size;
 } FileManager;
 
 

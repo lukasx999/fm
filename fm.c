@@ -39,6 +39,12 @@ static size_t dir_get_filecount(DIR *dir) {
     return filecount;
 }
 
+static int compare_entries(const void *a, const void *b) {
+    const Entry *x = a;
+    const Entry *y = b;
+    return strcmp(x->name, y->name);
+}
+
 static Directory read_dir(const char *dir) {
 
     DIR *dirp = opendir(dir);
@@ -60,9 +66,7 @@ static Directory read_dir(const char *dir) {
             .type    = type,
         };
 
-        strncpy(e.abspath, dir, ARRAY_LEN(e.abspath));
-        strncat(e.abspath, "/", ARRAY_LEN(e.abspath));
-        strncat(e.abspath, entry->d_name, ARRAY_LEN(e.abspath));
+        snprintf(e.abspath, ARRAY_LEN(e.abspath), "%s/%s", dir, entry->d_name);
 
         struct stat statbuf = { 0 };
         stat(e.abspath, &statbuf);
@@ -76,6 +80,8 @@ static Directory read_dir(const char *dir) {
         entries[i++] = e;
 
     }
+
+    qsort(entries, i, sizeof(Entry), compare_entries);
 
     assert(i == filecount);
     closedir(dirp);
@@ -94,9 +100,11 @@ static void updatedir(FileManager *fm) {
 void fm_init(FileManager *fm, const char *dir) {
 
     *fm = (FileManager) {
-        .cursor = 0,
-        .cwd    = { 0 },
-        .dir    = { 0 },
+        .cursor        = 0,
+        .cwd           = { 0 },
+        .dir           = { 0 },
+        .selected      = { 0 },
+        .selected_size = 0,
     };
 
     char *err = realpath(dir, fm->cwd);
@@ -158,7 +166,10 @@ void fm_go_down(FileManager *fm) {
 }
 
 void fm_select(FileManager *fm) {
-    Entry *entry = fm_get_current(fm);
+    // const char *abspath = fm_get_current(fm)->abspath;
+    // fm->selected[fm->selected_size++] = abspath;
+    (void) fm;
+    assert(!"TODO");
 }
 
 Entry *fm_get_current(const FileManager *fm) {
