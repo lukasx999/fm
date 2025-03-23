@@ -30,30 +30,15 @@ static const char *filetype_repr(unsigned char filetype) {
     }
 }
 
-static char *concat_path(const char *base, const char *sub, char *dest) {
+static struct stat
+direntry_statbuf(const char *dirname, const char *entry_name) {
 
-    char buf[PATH_MAX + NAME_MAX] = { 0 };
-    snprintf(buf, ARRAY_LEN(buf), "%s/%s", base, sub);
-    char *err = realpath(buf, dest);
-
-    if (err == NULL) {
-        perror("ERROR");
-        printf("%s\n", buf);
-        exit(1);
-    }
-    assert(err != NULL);
-
-    return err;
-}
-
-static struct stat direntry_statbuf(const char *dirname, const char *entry_name) {
-
-    char *path = concat_path(dirname, entry_name, NULL);
+    char pathbuf[PATH_MAX] = { 0 };
+    snprintf(pathbuf, ARRAY_LEN(pathbuf), "%s/%s", dirname, entry_name);
 
     struct stat statbuf = { 0 };
-    stat(path, &statbuf);
+    stat(pathbuf, &statbuf);
 
-    free(path);
     return statbuf;
 }
 
@@ -138,9 +123,13 @@ void fm_destroy(FileManager *fm) {
     free(fm->dir.entries);
 }
 
-
 static void update_cwd(FileManager *fm, const char *dir) {
-    concat_path(fm->cwd, dir, fm->cwd);
+
+    char buf[PATH_MAX + NAME_MAX] = { 0 };
+    snprintf(buf, ARRAY_LEN(buf), "%s/%s", fm->cwd, dir);
+    char *err = realpath(buf, fm->cwd);
+    assert(err != NULL);
+
     updatedir(fm);
 
     size_t filecount = fm->dir.size;

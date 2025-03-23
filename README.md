@@ -1,2 +1,7 @@
 # fm
-file manager
+
+## Terminal File Manager
+
+### TODO
+
+- [ ] show symlink pointee
