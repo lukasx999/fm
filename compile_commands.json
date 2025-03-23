@@ -1,0 +1,36 @@
+[
+ {
+  "directory": "/home/lukas/code/repos/fm",
+  "arguments": [
+   "gcc",
+   "-Wall",
+   "-Wextra",
+   "-std=c99",
+   "-pedantic",
+   "-ggdb",
+   "-fsanitize=address,undefined",
+   "-c",
+   "main.c",
+   "-o",
+   "main.o"
+  ],
+  "file": "main.c"
+ },
+ {
+  "directory": "/home/lukas/code/repos/fm",
+  "arguments": [
+   "gcc",
+   "-Wall",
+   "-Wextra",
+   "-std=c99",
+   "-pedantic",
+   "-ggdb",
+   "-fsanitize=address,undefined",
+   "-c",
+   "fm.c",
+   "-o",
+   "fm.o"
+  ],
+  "file": "fm.c"
+ }
+]

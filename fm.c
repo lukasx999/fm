@@ -30,12 +30,25 @@ static const char *filetype_repr(unsigned char filetype) {
     }
 }
 
+static char *concat_path(const char *base, const char *sub, char *dest) {
+
+    char buf[PATH_MAX + NAME_MAX] = { 0 };
+    snprintf(buf, ARRAY_LEN(buf), "%s/%s", base, sub);
+    char *err = realpath(buf, dest);
+
+    if (err == NULL) {
+        perror("ERROR");
+        printf("%s\n", buf);
+        exit(1);
+    }
+    assert(err != NULL);
+
+    return err;
+}
 
 static struct stat direntry_statbuf(const char *dirname, const char *entry_name) {
 
-    char buf[PATH_MAX] = { 0 };
-    snprintf(buf, ARRAY_LEN(buf), "%s/%s", dirname, entry_name);
-    char *path = realpath(buf, NULL);
+    char *path = concat_path(dirname, entry_name, NULL);
 
     struct stat statbuf = { 0 };
     stat(path, &statbuf);
@@ -44,31 +57,9 @@ static struct stat direntry_statbuf(const char *dirname, const char *entry_name)
     return statbuf;
 }
 
+static size_t dir_get_filecount(DIR *dir) {
 
-void fm_init(FileManager *fm, const char *startdir) {
-
-    *fm = (FileManager) {
-        .cwd = { 0 },
-    };
-
-    char *err = realpath(startdir, fm->cwd);
-
-    if (err == NULL) {
-        fprintf(
-            stderr,
-            "Failed to open directory `%s`: %s\n",
-            startdir,
-            strerror(errno)
-        );
-        exit(1);
-    }
-
-
-}
-
-static int dir_get_filecount(DIR *dir) {
-
-    int filecount = 0;
+    size_t filecount = 0;
     while (readdir(dir))
         filecount++;
 
@@ -76,36 +67,108 @@ static int dir_get_filecount(DIR *dir) {
     return filecount;
 }
 
-void fm_readdir(const FileManager *fm) {
+static Directory read_dir(const char *dir) {
 
-    DIR *dir = opendir(fm->cwd);
-    assert(dir != NULL);
+    DIR *dirp = opendir(dir);
+    assert(dirp != NULL);
 
-
-    int count = dir_get_filecount(dir);
-    printf("count: %d\n", count);
-
-
-    Entry *entries = malloc(sizeof(Entry) * count);
+    size_t filecount = dir_get_filecount(dirp);
+    Entry *entries = malloc(sizeof(Entry) * filecount);
+    assert(entries != NULL);
     size_t i = 0;
 
     struct dirent *entry;
-    while ((entry = readdir(dir)) != NULL) {
+    while ((entry = readdir(dirp)) != NULL) {
 
-        struct stat statbuf = direntry_statbuf(fm->cwd, entry->d_name);
+        struct stat statbuf = direntry_statbuf(dir, entry->d_name);
         const char *type = filetype_repr(entry->d_type);
 
-        entries[i++] = (Entry) {
-            .name = entry->d_name,
-            .type = type,
-            .size = statbuf.st_size,
+        Entry e = {
+            .name  = { 0 },
+            .type  = type,
+            .size  = statbuf.st_size,
+            .dtype = entry->d_type,
         };
+
+        // d_name cannot be used as its free'd by closedir()
+        strncpy(e.name, entry->d_name, ARRAY_LEN(e.name));
+
+        entries[i++] = e;
 
     }
 
-    assert(i == (size_t) count);
+    assert(i == filecount);
+    closedir(dirp);
 
-    free(entries);
-    closedir(dir);
+    return (Directory) {
+        .size = i,
+        .entries = entries,
+    };
 }
 
+static void updatedir(FileManager *fm) {
+    free(fm->dir.entries);
+    fm->dir = read_dir(fm->cwd);
+}
+
+void fm_init(FileManager *fm, const char *dir) {
+
+    *fm = (FileManager) {
+        .cursor = 0,
+        .cwd    = { 0 },
+        .dir    = { 0 },
+    };
+
+    char *err = realpath(dir, fm->cwd);
+    if (err == NULL) {
+        fprintf(
+            stderr,
+            "Failed to open directory `%s`: %s\n",
+            dir,
+            strerror(errno)
+        );
+        exit(1);
+    }
+
+    fm->dir = read_dir(fm->cwd);
+
+}
+
+void fm_destroy(FileManager *fm) {
+    free(fm->dir.entries);
+}
+
+
+static void update_cwd(FileManager *fm, const char *dir) {
+    concat_path(fm->cwd, dir, fm->cwd);
+    updatedir(fm);
+
+    size_t filecount = fm->dir.size;
+
+    if (fm->cursor >= filecount)
+        fm->cursor = filecount - 1;
+}
+
+void fm_go_back(FileManager *fm) {
+    update_cwd(fm, "..");
+}
+
+void fm_cd(FileManager *fm) {
+    const Entry *entry = &fm->dir.entries[fm->cursor];
+
+    if (entry->dtype != DT_DIR)
+        return;
+
+    const char *subdir = entry->name;
+    update_cwd(fm, subdir);
+}
+
+void fm_go_up(FileManager *fm) {
+    if (fm->cursor != 0)
+        fm->cursor--;
+}
+
+void fm_go_down(FileManager *fm) {
+    if (fm->cursor != fm->dir.size - 1)
+        fm->cursor++;
+}
