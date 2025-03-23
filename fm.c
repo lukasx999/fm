@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <sys/stat.h>
 
@@ -64,6 +65,7 @@ static Directory read_dir(const char *dir) {
             .name    = { 0 },
             .abspath = { 0 },
             .type    = type,
+            .dtype   = entry->d_type,
         };
 
         snprintf(e.abspath, ARRAY_LEN(e.abspath), "%s/%s", dir, entry->d_name);
@@ -126,7 +128,7 @@ void fm_destroy(FileManager *fm) {
     free(fm->dir.entries);
 }
 
-static void update_cwd(FileManager *fm, const char *dir) {
+static void append_cwd(FileManager *fm, const char *dir) {
 
     char buf[PATH_MAX + NAME_MAX] = { 0 };
     snprintf(buf, ARRAY_LEN(buf), "%s/%s", fm->cwd, dir);
@@ -141,18 +143,30 @@ static void update_cwd(FileManager *fm, const char *dir) {
         fm->cursor = filecount - 1;
 }
 
-void fm_go_back(FileManager *fm) {
-    update_cwd(fm, "..");
+void fm_cd_parent(FileManager *fm) {
+    append_cwd(fm, "..");
 }
 
 void fm_cd(FileManager *fm) {
     const Entry *entry = &fm->dir.entries[fm->cursor];
 
-    if (strcmp(entry->type, filetype_repr(DT_DIR)))
+    if (entry->dtype != DT_DIR)
         return;
 
     const char *subdir = entry->name;
-    update_cwd(fm, subdir);
+    append_cwd(fm, subdir);
+}
+
+void fm_cd_abs(FileManager *fm, const char *path) {
+    memset(fm->cwd, 0, ARRAY_LEN(fm->cwd));
+    strncpy(fm->cwd, path, ARRAY_LEN(fm->cwd));
+    updatedir(fm);
+}
+
+void fm_cd_home(FileManager *fm) {
+    char *home = getenv("HOME");
+    assert(home != NULL);
+    fm_cd_abs(fm, home);
 }
 
 void fm_go_up(FileManager *fm) {
@@ -165,13 +179,16 @@ void fm_go_down(FileManager *fm) {
         fm->cursor++;
 }
 
-void fm_select(FileManager *fm) {
-    // const char *abspath = fm_get_current(fm)->abspath;
-    // fm->selected[fm->selected_size++] = abspath;
-    (void) fm;
-    assert(!"TODO");
-}
-
 Entry *fm_get_current(const FileManager *fm) {
     return &fm->dir.entries[fm->cursor];
+}
+
+void fm_exec(const FileManager *fm, const char *bin, void (*exit_routine)(void)) {
+    Entry *e = fm_get_current(fm);
+    exit_routine();
+    int err = execlp(bin, bin, e->abspath, NULL);
+    if (err == -1) {
+        fprintf(stderr, "Failed to execute `%s`: %s\n", bin, strerror(errno));
+        exit(1);
+    }
 }
