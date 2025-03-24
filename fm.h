@@ -30,6 +30,7 @@ typedef struct {
     Directory dir;
     const char *selected[MAX_SELECT];
     size_t selected_size;
+    bool show_hidden;
 } FileManager;
 
 
@@ -42,7 +43,9 @@ void fm_go_up(FileManager *fm);
 void fm_cd_home(FileManager *fm);
 void fm_cd_abs(FileManager *fm, const char *path);
 void fm_exec(const FileManager *fm, const char *bin, void (*exit_routine)(void));
+void fm_toggle_hidden(FileManager *fm);
 Entry *fm_get_current(const FileManager *fm);
+
 
 // TODO:
 // fm_select()

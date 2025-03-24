@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <string.h>
+#include <stdbool.h>
 #include <unistd.h>
 
 #include <sys/stat.h>
@@ -40,17 +41,25 @@ static size_t dir_get_filecount(DIR *dir) {
     return filecount;
 }
 
+static void check_cursor_bounds(FileManager *fm) {
+    size_t filecount = fm->dir.size;
+
+    if (fm->cursor >= filecount)
+        fm->cursor = filecount - 1;
+}
+
 static int compare_entries(const void *a, const void *b) {
     const Entry *x = a;
     const Entry *y = b;
     return strcmp(x->name, y->name);
 }
 
-static Directory read_dir(const char *dir) {
+static void load_dir(FileManager *fm) {
 
-    DIR *dirp = opendir(dir);
+    DIR *dirp = opendir(fm->cwd);
     assert(dirp != NULL);
 
+    // some space may be wasted, because of ignoring hidden files
     size_t filecount = dir_get_filecount(dirp);
     Entry *entries = malloc(sizeof(Entry) * filecount);
     assert(entries != NULL);
@@ -58,6 +67,8 @@ static Directory read_dir(const char *dir) {
 
     struct dirent *entry = NULL;
     while ((entry = readdir(dirp)) != NULL) {
+
+        if (fm->show_hidden && entry->d_name[0] == '.') continue;
 
         const char *type = filetype_repr(entry->d_type);
 
@@ -68,7 +79,7 @@ static Directory read_dir(const char *dir) {
             .dtype   = entry->d_type,
         };
 
-        snprintf(e.abspath, ARRAY_LEN(e.abspath), "%s/%s", dir, entry->d_name);
+        snprintf(e.abspath, ARRAY_LEN(e.abspath), "%s/%s", fm->cwd, entry->d_name);
 
         struct stat statbuf = { 0 };
         stat(e.abspath, &statbuf);
@@ -84,19 +95,21 @@ static Directory read_dir(const char *dir) {
     }
 
     qsort(entries, i, sizeof(Entry), compare_entries);
-
-    assert(i == filecount);
     closedir(dirp);
 
-    return (Directory) {
+    fm->dir = (Directory) {
         .size = i,
         .entries = entries,
     };
+
+    // after loading dir with less entries than last one, move the cursor back
+    // if its out of bounds
+    check_cursor_bounds(fm);
 }
 
-static void updatedir(FileManager *fm) {
-    free(fm->dir.entries);
-    fm->dir = read_dir(fm->cwd);
+static void reload_dir(FileManager *fm) {
+    free(fm->dir.entries); // deallocate old dir
+    load_dir(fm); // allocate new one
 }
 
 void fm_init(FileManager *fm, const char *dir) {
@@ -107,6 +120,7 @@ void fm_init(FileManager *fm, const char *dir) {
         .dir           = { 0 },
         .selected      = { 0 },
         .selected_size = 0,
+        .show_hidden   = false,
     };
 
     char *err = realpath(dir, fm->cwd);
@@ -120,7 +134,8 @@ void fm_init(FileManager *fm, const char *dir) {
         exit(1);
     }
 
-    fm->dir = read_dir(fm->cwd);
+    // not calling updatedir() as dir hasn't been allocated yet
+    load_dir(fm);
 
 }
 
@@ -135,12 +150,7 @@ static void append_cwd(FileManager *fm, const char *dir) {
     char *err = realpath(buf, fm->cwd);
     assert(err != NULL);
 
-    updatedir(fm);
-
-    size_t filecount = fm->dir.size;
-
-    if (fm->cursor >= filecount)
-        fm->cursor = filecount - 1;
+    reload_dir(fm);
 }
 
 void fm_cd_parent(FileManager *fm) {
@@ -160,7 +170,7 @@ void fm_cd(FileManager *fm) {
 void fm_cd_abs(FileManager *fm, const char *path) {
     memset(fm->cwd, 0, ARRAY_LEN(fm->cwd));
     strncpy(fm->cwd, path, ARRAY_LEN(fm->cwd));
-    updatedir(fm);
+    reload_dir(fm);
 }
 
 void fm_cd_home(FileManager *fm) {
@@ -191,4 +201,9 @@ void fm_exec(const FileManager *fm, const char *bin, void (*exit_routine)(void))
         fprintf(stderr, "Failed to execute `%s`: %s\n", bin, strerror(errno));
         exit(1);
     }
+}
+
+void fm_toggle_hidden(FileManager *fm) {
+    fm->show_hidden = !fm->show_hidden;
+    reload_dir(fm);
 }

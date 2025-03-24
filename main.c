@@ -111,7 +111,12 @@ static void draw_entries(
         printw("%s", e->type);
         align(20);
 
-        attron(COLOR_PAIR(sel ? PAIR_SELECTED : PAIR_WHITE));
+        attron(COLOR_PAIR(
+            sel
+            ? PAIR_SELECTED
+            : e->dtype == DT_DIR
+            ? PAIR_BLUE
+            : PAIR_WHITE));
         printw("%s ", e->name);
         align(width);
 
@@ -163,6 +168,10 @@ int main(void) {
 
             case 'H':
                 fm_cd_home(&fm);
+                break;
+
+            case '.':
+                fm_toggle_hidden(&fm);
                 break;
 
             case 'h':
