@@ -68,7 +68,9 @@ static void draw_topbar(const FileManager *fm) {
         printw("/");
 
     attrset(A_BOLD);
-    printw("%s", fm_get_current(fm)->name);
+    Entry *e = fm_get_current(fm);
+    if (e != NULL)
+        printw("%s", e->name);
 
     standend();
 }
@@ -150,45 +152,18 @@ int main(void) {
 
         int c = getch();
         switch (c) {
-            case 'q':
-                quit = true;
-                break;
-
-            case 'j':
-                fm_go_down(&fm);
-                break;
-
-            case 'k':
-                fm_go_up(&fm);
-                break;
-
-            case 'R':
-                fm_cd_abs(&fm, "/");
-                break;
-
-            case 'H':
-                fm_cd_home(&fm);
-                break;
-
-            case '.':
-                fm_toggle_hidden(&fm);
-                break;
-
+            case 'q': quit = true;                               break;
+            case 'w': fm_toggle_cursor_wrapping(&fm);            break;
+            case 'j': fm_go_down(&fm);                           break;
+            case 'k': fm_go_up(&fm);                             break;
+            case 'R': fm_cd_abs(&fm, "/");                       break;
+            case 'H': fm_cd_home(&fm);                           break;
+            case '.': fm_toggle_hidden(&fm);                     break;
             case 'h':
-            case '-':
-                fm_cd_parent(&fm);
-                break;
-
-            case KEY_RETURN:
-                fm_exec(&fm, "nvim", exit_routine);
-                break;
-
-            case 'l':
-                fm_cd(&fm);
-                break;
-
-            default:
-                break;
+            case '-': fm_cd_parent(&fm);                         break;
+            case KEY_RETURN: fm_exec(&fm, "nvim", exit_routine); break;
+            case 'l': fm_cd(&fm);                                break;
+            default:                                             break;
         }
 
 

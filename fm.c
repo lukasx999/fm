@@ -44,14 +44,14 @@ static size_t dir_get_filecount(DIR *dir) {
 static void check_cursor_bounds(FileManager *fm) {
     size_t filecount = fm->dir.size;
 
-    if (fm->cursor >= filecount)
+    if ((size_t) fm->cursor >= filecount)
         fm->cursor = filecount - 1;
 }
 
 static int compare_entries(const void *a, const void *b) {
     const Entry *x = a;
     const Entry *y = b;
-    return strcmp(x->name, y->name);
+    return (y->dtype == DT_DIR) - (x->dtype == DT_DIR);
 }
 
 static void load_dir(FileManager *fm) {
@@ -68,7 +68,7 @@ static void load_dir(FileManager *fm) {
     struct dirent *entry = NULL;
     while ((entry = readdir(dirp)) != NULL) {
 
-        if (fm->show_hidden && entry->d_name[0] == '.') continue;
+        if (!fm->show_hidden && entry->d_name[0] == '.') continue;
 
         const char *type = filetype_repr(entry->d_type);
 
@@ -98,7 +98,7 @@ static void load_dir(FileManager *fm) {
     closedir(dirp);
 
     fm->dir = (Directory) {
-        .size = i,
+        .size    = i,
         .entries = entries,
     };
 
@@ -121,6 +121,7 @@ void fm_init(FileManager *fm, const char *dir) {
         .selected      = { 0 },
         .selected_size = 0,
         .show_hidden   = false,
+        .wrap_cursor   = true,
     };
 
     char *err = realpath(dir, fm->cwd);
@@ -180,21 +181,30 @@ void fm_cd_home(FileManager *fm) {
 }
 
 void fm_go_up(FileManager *fm) {
-    if (fm->cursor != 0)
+    if (fm->cursor > 0)
         fm->cursor--;
+    else if (fm->wrap_cursor)
+        fm->cursor = fm->dir.size-1;
 }
 
 void fm_go_down(FileManager *fm) {
-    if (fm->cursor != fm->dir.size - 1)
+    if ((size_t) fm->cursor != fm->dir.size - 1)
         fm->cursor++;
+    else if (fm->wrap_cursor)
+        fm->cursor = 0;
 }
 
 Entry *fm_get_current(const FileManager *fm) {
-    return &fm->dir.entries[fm->cursor];
+    return fm->cursor == -1
+    ? NULL
+    : &fm->dir.entries[fm->cursor];
 }
 
 void fm_exec(const FileManager *fm, const char *bin, void (*exit_routine)(void)) {
     Entry *e = fm_get_current(fm);
+    if (e == NULL)
+        return;
+
     exit_routine();
     int err = execlp(bin, bin, e->abspath, NULL);
     if (err == -1) {
@@ -206,4 +216,8 @@ void fm_exec(const FileManager *fm, const char *bin, void (*exit_routine)(void))
 void fm_toggle_hidden(FileManager *fm) {
     fm->show_hidden = !fm->show_hidden;
     reload_dir(fm);
+}
+
+void fm_toggle_cursor_wrapping(FileManager *fm) {
+    fm->wrap_cursor = !fm->wrap_cursor;
 }
