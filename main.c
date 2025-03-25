@@ -13,6 +13,7 @@
 #include "fm.h"
 
 #define COLOR_BRIGHT_WHITE 15
+#define COLOR_GRAY 8
 #define KEY_RETURN 10
 
 #define PAIR_WHITE       1
@@ -21,6 +22,8 @@
 #define PAIR_RED         4
 #define PAIR_SELECTED    5
 #define PAIR_SELECTED_HL 6
+#define PAIR_GREY        7
+#define PAIR_YELLOW      8
 
 static void curses_init(void) {
     initscr();
@@ -38,6 +41,8 @@ static void curses_init(void) {
     init_pair(PAIR_RED,         COLOR_RED,          COLOR_BLACK);
     init_pair(PAIR_BLUE,        COLOR_BLUE,         COLOR_BLACK);
     init_pair(PAIR_GREEN,       COLOR_GREEN,        COLOR_BLACK);
+    init_pair(PAIR_GREY,        COLOR_GRAY,         COLOR_BLACK);
+    init_pair(PAIR_YELLOW,      COLOR_YELLOW,       COLOR_BLACK);
     init_pair(PAIR_SELECTED,    COLOR_BLACK,        COLOR_BRIGHT_WHITE);
     init_pair(PAIR_SELECTED_HL, COLOR_BLACK,        COLOR_RED);
 
@@ -95,6 +100,26 @@ static void align(int padding) {
     offset += padding;
 }
 
+static void draw_char_colored(char c, int pair, bool change_color) {
+    if (change_color) attron(COLOR_PAIR(pair));
+    printw("%c", c);
+    if (change_color) attroff(COLOR_PAIR(pair));
+}
+
+static void draw_permissions(const Entry *e, bool sel) {
+    if (e->mode & S_IRUSR) draw_char_colored('r', PAIR_YELLOW, !sel); else draw_char_colored('-', PAIR_GREY, !sel);
+    if (e->mode & S_IWUSR) draw_char_colored('w', PAIR_RED,    !sel); else draw_char_colored('-', PAIR_GREY, !sel);
+    if (e->mode & S_IXUSR) draw_char_colored('x', PAIR_GREEN,  !sel); else draw_char_colored('-', PAIR_GREY, !sel);
+
+    if (e->mode & S_IRGRP) draw_char_colored('r', PAIR_YELLOW, !sel); else draw_char_colored('-', PAIR_GREY, !sel);
+    if (e->mode & S_IWGRP) draw_char_colored('w', PAIR_RED,    !sel); else draw_char_colored('-', PAIR_GREY, !sel);
+    if (e->mode & S_IXGRP) draw_char_colored('x', PAIR_GREEN,  !sel); else draw_char_colored('-', PAIR_GREY, !sel);
+
+    if (e->mode & S_IROTH) draw_char_colored('r', PAIR_YELLOW, !sel); else draw_char_colored('-', PAIR_GREY, !sel);
+    if (e->mode & S_IWOTH) draw_char_colored('w', PAIR_RED,    !sel); else draw_char_colored('-', PAIR_GREY, !sel);
+    if (e->mode & S_IXOTH) draw_char_colored('x', PAIR_GREEN,  !sel); else draw_char_colored('-', PAIR_GREY, !sel);
+}
+
 static void draw_entries(
     const FileManager *fm,
     int off_y,
@@ -114,22 +139,8 @@ static void draw_entries(
         move(i + off_y, off_x);
 
         attron(COLOR_PAIR(sel ? PAIR_SELECTED : PAIR_WHITE));
-
-        if (e->dtype == DT_DIR) printw("d"); else printw("-");
-
-        if (e->mode & S_IRUSR) printw("r"); else printw("-");
-        if (e->mode & S_IWUSR) printw("w"); else printw("-");
-        if (e->mode & S_IXUSR) printw("x"); else printw("-");
-
-        if (e->mode & S_IRGRP) printw("r"); else printw("-");
-        if (e->mode & S_IWGRP) printw("w"); else printw("-");
-        if (e->mode & S_IXGRP) printw("x"); else printw("-");
-
-        if (e->mode & S_IROTH) printw("r"); else printw("-");
-        if (e->mode & S_IWOTH) printw("w"); else printw("-");
-        if (e->mode & S_IXOTH) printw("x"); else printw("-");
-
-        align(20);
+        draw_permissions(e, sel);
+        align(14);
 
         attron(COLOR_PAIR(sel ? PAIR_SELECTED : PAIR_BLUE));
         if (e->size > 1024) printw("%luK ", e->size / 1024);
