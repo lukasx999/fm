@@ -120,6 +120,15 @@ static void draw_permissions(const Entry *e, bool sel) {
     if (e->mode & S_IXOTH) draw_char_colored('x', PAIR_GREEN,  !sel); else draw_char_colored('-', PAIR_GREY, !sel);
 }
 
+static void draw_filesize(size_t size) {
+    if (size > 1024 * 1024)
+        printw("%luM ", size / (1024 * 1024));
+    else if (size > 1024)
+        printw("%luK ", size / 1024);
+    else
+        printw("%lu ", size);
+}
+
 static void draw_entries(
     const FileManager *fm,
     int off_y,
@@ -135,7 +144,6 @@ static void draw_entries(
         Entry *e = &dir->entries[i];
         bool sel = i == (size_t) fm->cursor;
 
-
         move(i + off_y, off_x);
 
         attron(COLOR_PAIR(sel ? PAIR_SELECTED : PAIR_WHITE));
@@ -143,8 +151,7 @@ static void draw_entries(
         align(14);
 
         attron(COLOR_PAIR(sel ? PAIR_SELECTED : PAIR_BLUE));
-        if (e->size > 1024) printw("%luK ", e->size / 1024);
-        else                printw("%lu ", e->size);
+        draw_filesize(e->size);
         align(10);
 
         attron(COLOR_PAIR(sel ? PAIR_SELECTED : PAIR_GREEN));
