@@ -75,14 +75,24 @@ static void draw_topbar(const FileManager *fm) {
     standend();
 }
 
+// insert needed amount of spaces to align current x cell to
+// padding. keeps track of previous padding, `-1` for reset
 static void align(int padding) {
+    static int offset = 0;
+
+    if (padding == -1) {
+        offset = 0;
+        return;
+    }
 
     int x, _y;
     getyx(stdscr, _y, x);
     (void) _y;
 
-    for (int _=0; _ < padding - x; ++_)
+    for (int _=0; _ < offset + padding - x; ++_)
         printw(" ");
+
+    offset += padding;
 }
 
 static void draw_entries(
@@ -98,20 +108,39 @@ static void draw_entries(
     for (size_t i=0; i < dir->size; ++i) {
 
         Entry *e = &dir->entries[i];
-        bool sel = i == fm->cursor;
+        bool sel = i == (size_t) fm->cursor;
 
-        if (e->dtype == DT_DIR)
-            attron(A_BOLD);
 
         move(i + off_y, off_x);
 
+        attron(COLOR_PAIR(sel ? PAIR_SELECTED : PAIR_WHITE));
+
+        if (e->dtype == DT_DIR) printw("d"); else printw("-");
+
+        if (e->mode & S_IRUSR) printw("r"); else printw("-");
+        if (e->mode & S_IWUSR) printw("w"); else printw("-");
+        if (e->mode & S_IXUSR) printw("x"); else printw("-");
+
+        if (e->mode & S_IRGRP) printw("r"); else printw("-");
+        if (e->mode & S_IWGRP) printw("w"); else printw("-");
+        if (e->mode & S_IXGRP) printw("x"); else printw("-");
+
+        if (e->mode & S_IROTH) printw("r"); else printw("-");
+        if (e->mode & S_IWOTH) printw("w"); else printw("-");
+        if (e->mode & S_IXOTH) printw("x"); else printw("-");
+
+        align(20);
+
         attron(COLOR_PAIR(sel ? PAIR_SELECTED : PAIR_BLUE));
-        printw("%lu ", e->size);
+        if (e->size > 1024) printw("%luK ", e->size / 1024);
+        else                printw("%lu ", e->size);
         align(10);
 
         attron(COLOR_PAIR(sel ? PAIR_SELECTED : PAIR_GREEN));
         printw("%s", e->type);
-        align(20);
+        align(10);
+
+        if (e->dtype == DT_DIR) attron(A_BOLD);
 
         attron(COLOR_PAIR(
             sel
@@ -121,6 +150,7 @@ static void draw_entries(
             : PAIR_WHITE));
         printw("%s ", e->name);
         align(width);
+        align(-1);
 
         standend();
     }

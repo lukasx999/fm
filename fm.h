@@ -35,22 +35,20 @@ typedef struct {
 } FileManager;
 
 
-void fm_init(FileManager *fm, const char *dir);
-void fm_destroy(FileManager *fm);
-void fm_cd(FileManager *fm);
-void fm_cd_parent(FileManager *fm);
-void fm_go_down(FileManager *fm);
-void fm_go_up(FileManager *fm);
-void fm_cd_home(FileManager *fm);
-void fm_cd_abs(FileManager *fm, const char *path);
-void fm_exec(const FileManager *fm, const char *bin, void (*exit_routine)(void));
-void fm_toggle_hidden(FileManager *fm);
-void fm_toggle_cursor_wrapping(FileManager *fm);
-Entry *fm_get_current(const FileManager *fm);
+void fm_init                   (FileManager *fm, const char *dir);
+void fm_destroy                (FileManager *fm);
+void fm_cd                     (FileManager *fm);
+void fm_cd_parent              (FileManager *fm);
+void fm_go_down                (FileManager *fm);
+void fm_go_up                  (FileManager *fm);
+void fm_cd_home                (FileManager *fm);
+void fm_cd_abs                 (FileManager *fm, const char *path);
+void fm_exec                   (const FileManager *fm, const char *bin, void (*exit_routine)(void));
+void fm_toggle_hidden          (FileManager *fm);
+void fm_toggle_cursor_wrapping (FileManager *fm);
+void fm_toggle_select          (FileManager *fm);
+Entry *fm_get_current          (const FileManager *fm);
 
-
-// TODO:
-// fm_select()
 
 
 

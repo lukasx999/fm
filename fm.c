@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include <sys/stat.h>
+#include <sys/wait.h>
 
 #include "fm.h"
 
@@ -51,7 +52,12 @@ static void check_cursor_bounds(FileManager *fm) {
 static int compare_entries(const void *a, const void *b) {
     const Entry *x = a;
     const Entry *y = b;
-    return (y->dtype == DT_DIR) - (x->dtype == DT_DIR);
+
+    int dircmp = (y->dtype == DT_DIR) - (x->dtype == DT_DIR);
+
+    return dircmp == 0
+    ? strcmp(x->name, y->name)
+    : dircmp;
 }
 
 static void load_dir(FileManager *fm) {
@@ -220,4 +226,11 @@ void fm_toggle_hidden(FileManager *fm) {
 
 void fm_toggle_cursor_wrapping(FileManager *fm) {
     fm->wrap_cursor = !fm->wrap_cursor;
+}
+
+void fm_toggle_select(FileManager *fm) {
+    Entry *e = fm_get_current(fm);
+    (void) e->abspath;
+    // TODO:
+    assert(!"TODO");
 }

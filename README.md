@@ -5,3 +5,4 @@
 ### TODO
 
 - [ ] show symlink pointee
+- [ ] run custom command on selected files
