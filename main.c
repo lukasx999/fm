@@ -146,6 +146,11 @@ static void draw_entries(
 
         move(i + off_y, off_x);
 
+        if (fm_is_selected(fm, e->abspath)) {
+            printw(">");
+        }
+        align(4);
+
         attron(COLOR_PAIR(sel ? PAIR_SELECTED : PAIR_WHITE));
         draw_permissions(e, sel);
         align(14);
@@ -186,7 +191,6 @@ int main(void) {
     FileManager fm = { 0 };
     fm_init(&fm, startdir);
 
-
     curses_init();
     atexit(exit_routine);
 
@@ -209,6 +213,7 @@ int main(void) {
             case '.': fm_toggle_hidden(&fm);                     break;
             case 'h':
             case '-': fm_cd_parent(&fm);                         break;
+            case ' ': fm_toggle_select(&fm);                     break;
             case KEY_RETURN: fm_exec(&fm, "nvim", exit_routine); break;
             case 'l': fm_cd(&fm);                                break;
             default:                                             break;

@@ -124,8 +124,7 @@ void fm_init(FileManager *fm, const char *dir) {
         .cursor        = 0,
         .cwd           = { 0 },
         .dir           = { 0 },
-        .selected      = { 0 },
-        .selected_size = 0,
+        .sel           = { .paths = { { 0 } }, .size = 0 },
         .show_hidden   = false,
         .wrap_cursor   = true,
     };
@@ -228,9 +227,38 @@ void fm_toggle_cursor_wrapping(FileManager *fm) {
     fm->wrap_cursor = !fm->wrap_cursor;
 }
 
+static ssize_t fm_search_selection(const FileManager *fm, const char *path) {
+    const Selections *sel = &fm->sel;
+
+    for (size_t i=0; i < sel->size; ++i)
+        if (!strcmp(sel->paths[i], path))
+            return i;
+
+    return -1;
+}
+
 void fm_toggle_select(FileManager *fm) {
-    Entry *e = fm_get_current(fm);
-    (void) e->abspath;
-    // TODO:
-    assert(!"TODO");
+    Selections *sel = &fm->sel;
+    const char *path = fm_get_current(fm)->abspath;
+
+    ssize_t i = fm_search_selection(fm, path);
+    if (i == -1) {
+        // Insert
+        if (sel->size == MAX_SELECTION) return;
+        strncpy(sel->paths[sel->size++], path, ARRAY_LEN(*sel->paths));
+
+    } else {
+        // Delete
+        memmove(
+            sel->paths + i,
+            sel->paths + i + 1,
+            (sel->size - i - 1) * sizeof(char*)
+        );
+        sel->size--;
+
+    }
+}
+
+bool fm_is_selected(const FileManager *fm, const char *path) {
+    return fm_search_selection(fm, path) != -1;
 }
