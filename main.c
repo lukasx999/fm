@@ -289,7 +289,8 @@ int main(void) {
 
             case 'c': {
                 char *cmd = show_prompt("run cmd");
-                // TODO: run cmd on all selected entries with format
+                // TODO: run cmd on all selected entries
+                // `{}` or `%` represents current filename
                 free(cmd);
             } break;
 
