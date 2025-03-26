@@ -5,13 +5,14 @@
 #include <dirent.h>
 #include <assert.h>
 #include <unistd.h>
+#include <ctype.h>
 
 #include <sys/stat.h>
 
 #include <ncurses.h>
 
 #include "fm.h"
-#include "ext.h"
+#include "next.h"
 
 
 
@@ -30,6 +31,8 @@ static void curses_init(void) {
     keypad(stdscr, true);
     raw();
     curs_set(0);
+
+    ESCDELAY = 0;
 
     if (!has_colors())
         fprintf(stderr, "Your terminal does not support colors\n");
@@ -188,6 +191,51 @@ static void exit_routine(void) {
     curses_deinit();
 }
 
+static char *show_prompt(const char *prompt) {
+
+    int offsety = 2;
+    int y = getmaxy(stdscr);
+
+    size_t bufsize = getmaxx(stdscr) - strlen(prompt) - strlen(": ");
+    char *buf = malloc(bufsize * sizeof(char));
+    memset(buf, 0, bufsize * sizeof(char));
+    size_t i = 0;
+
+    bool done = false;
+    while (!done) {
+
+        move(y - offsety, 0);
+        clrtoeol();
+        printw("%s: %s", prompt, buf);
+
+        int ch = getch();
+        switch (ch) {
+
+            case KEY_ESCAPE:
+            case KEY_RETURN:
+                done = true;
+                break;
+
+            case KEY_BACKSPACE:
+                if (i > 0)
+                    buf[--i] = '\0';
+                break;
+
+            default:
+                if (i >= bufsize - 1)
+                    break;
+
+                if (isascii(ch))
+                    buf[i++] = (char) ch;
+                break;
+
+        }
+
+    }
+
+    return buf;
+}
+
 int main(void) {
 
     const char *startdir = "./test/";
@@ -208,19 +256,67 @@ int main(void) {
 
         int c = getch();
         switch (c) {
-            case 'q': quit = true;                               break;
-            case 'w': fm_toggle_cursor_wrapping(&fm);            break;
-            case 'j': fm_go_down(&fm);                           break;
-            case 'k': fm_go_up(&fm);                             break;
-            case 'R': fm_cd_abs(&fm, "/");                       break;
-            case 'H': fm_cd_home(&fm);                           break;
-            case '.': fm_toggle_hidden(&fm);                     break;
+
+            case KEY_ESCAPE:
+            case 'q':
+                quit = true;
+                break;
+
+            case 'w': fm_toggle_cursor_wrapping(&fm);
+                break;
+
+            case 'n' & KEY_MASK_CTRL:
+            case 'j':
+                fm_go_down(&fm);
+                break;
+
+            case 'p' & KEY_MASK_CTRL:
+            case 'k':
+                fm_go_up(&fm);
+                break;
+
+            case 'R':
+                fm_cd_abs(&fm, "/");
+                break;
+
+            case 'H':
+                fm_cd_home(&fm);
+                break;
+
+            case '.':
+                fm_toggle_hidden(&fm);
+                break;
+
+            case 'c': {
+                char *cmd = show_prompt("run cmd");
+                // TODO: run cmd on all selected entries with format
+                free(cmd);
+            } break;
+
+            case 's':
+            case ' ':
+                fm_toggle_select(&fm);
+                break;
+
+            case KEY_RETURN: {
+                char *cmd = show_prompt("exec");
+                fm_exec(&fm, cmd, exit_routine);
+                // BUG: memory leak as execve() replaces current process
+                // and cmd never gets free'd
+            } break;
+
+            case 'b' & KEY_MASK_CTRL:
             case 'h':
-            case '-': fm_cd_parent(&fm);                         break;
-            case ' ': fm_toggle_select(&fm);                     break;
-            case KEY_RETURN: fm_exec(&fm, "nvim", exit_routine); break;
-            case 'l': fm_cd(&fm);                                break;
-            default:                                             break;
+            case '-':
+                fm_cd_parent(&fm);
+                break;
+
+            case 'f' & KEY_MASK_CTRL:
+            case 'l':
+                fm_cd(&fm);
+                break;
+
+            default: break;
         }
 
 
