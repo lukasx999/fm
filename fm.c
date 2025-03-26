@@ -45,8 +45,11 @@ static size_t dir_get_filecount(DIR *dir) {
 static void check_cursor_bounds(FileManager *fm) {
     size_t filecount = fm->dir.size;
 
-    if ((size_t) fm->cursor >= filecount)
-        fm->cursor = filecount - 1;
+    if (fm->cursor == -1) // last dir was empty
+        fm->cursor = 0;
+
+    else if ((size_t) fm->cursor >= filecount)
+        fm->cursor = filecount - 1; // -1 if dir is empty
 }
 
 static int compare_entries(const void *a, const void *b) {
@@ -164,6 +167,7 @@ void fm_cd_parent(FileManager *fm) {
 }
 
 void fm_cd(FileManager *fm) {
+    if (fm->cursor == -1) return;
     const Entry *entry = &fm->dir.entries[fm->cursor];
 
     if (entry->dtype != DT_DIR)
@@ -186,6 +190,8 @@ void fm_cd_home(FileManager *fm) {
 }
 
 void fm_go_up(FileManager *fm) {
+    if (fm->cursor == -1) return;
+
     if (fm->cursor > 0)
         fm->cursor--;
     else if (fm->wrap_cursor)
@@ -193,6 +199,8 @@ void fm_go_up(FileManager *fm) {
 }
 
 void fm_go_down(FileManager *fm) {
+    if (fm->cursor == -1) return;
+
     if ((size_t) fm->cursor != fm->dir.size - 1)
         fm->cursor++;
     else if (fm->wrap_cursor)

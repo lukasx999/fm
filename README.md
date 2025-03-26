@@ -4,5 +4,6 @@
 
 ### TODO
 
-- [ ] show symlink pointee
-- [ ] run custom command on selected files
+- show symlink pointee
+- run custom command on selected files
+- scrolling

@@ -11,10 +11,9 @@
 #include <ncurses.h>
 
 #include "fm.h"
+#include "ext.h"
 
-#define COLOR_BRIGHT_WHITE 15
-#define COLOR_GRAY 8
-#define KEY_RETURN 10
+
 
 #define PAIR_WHITE       1
 #define PAIR_BLUE        2
@@ -138,6 +137,11 @@ static void draw_entries(
 ) {
 
     const Directory *dir = &fm->dir;
+
+    if (dir->size == 0) {
+        move(off_y, off_x);
+        printw_color(PAIR_GREY, "<empty>");
+    }
 
     for (size_t i=0; i < dir->size; ++i) {
 

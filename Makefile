@@ -1,11 +1,11 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -std=c99 -pedantic -ggdb -fsanitize=address,undefined
 LIBS=-lncurses
-DEPS=fm.h
+DEPS=fm.h ext.h
 
 all: fm
 
-fm: main.o fm.o
+fm: main.o fm.o ext.o
 	$(CC) $(CFLAGS) $(LIBS) $^ -o $@
 
 %.o: %.c Makefile $(DEPS)
