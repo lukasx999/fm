@@ -72,6 +72,9 @@ static int compare_entries(const void *a, const void *b) {
 
 static void load_dir(FileManager *fm) {
 
+    // deallocate old dir, will do nothing when initializing as entries is NULL
+    free(fm->dir.entries);
+
     DIR *dirp = opendir(fm->cwd);
     assert(dirp != NULL);
 
@@ -123,17 +126,12 @@ static void load_dir(FileManager *fm) {
     check_cursor_bounds(fm);
 }
 
-static void reload_dir(FileManager *fm) {
-    free(fm->dir.entries); // deallocate old dir
-    load_dir(fm);          // allocate new one
-}
-
 void fm_init(FileManager *fm, const char *dir) {
 
     *fm = (FileManager) {
         .cursor        = 0,
         .cwd           = { 0 },
-        .dir           = { 0 },
+        .dir           = { .entries = NULL, .size = 0 },
         .sel           = { .paths = { { 0 } }, .size = 0 },
         .show_hidden   = false,
         .wrap_cursor   = true,
@@ -150,7 +148,6 @@ void fm_init(FileManager *fm, const char *dir) {
         exit(1);
     }
 
-    // not calling updatedir() as dir hasn't been allocated yet
     load_dir(fm);
 
 }
@@ -169,7 +166,7 @@ static void append_cwd(FileManager *fm, const char *dir) {
     char *err = realpath(buf, fm->cwd);
     assert(err != NULL);
 
-    reload_dir(fm);
+    load_dir(fm);
 }
 
 void fm_cd_parent(FileManager *fm) {
@@ -191,7 +188,7 @@ void fm_cd_abs(FileManager *fm, const char *path) {
 
     memset(fm->cwd, 0, ARRAY_LEN(fm->cwd));
     strncpy(fm->cwd, path, ARRAY_LEN(fm->cwd));
-    reload_dir(fm);
+    load_dir(fm);
 }
 
 void fm_cd_home(FileManager *fm) {
@@ -239,7 +236,7 @@ void fm_exec(const FileManager *fm, const char *bin, void (*exit_routine)(void))
 
 void fm_toggle_hidden(FileManager *fm) {
     fm->show_hidden = !fm->show_hidden;
-    reload_dir(fm);
+    load_dir(fm);
 }
 
 void fm_toggle_cursor_wrapping(FileManager *fm) {
