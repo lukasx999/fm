@@ -13,12 +13,25 @@
 #define KEY_ESCAPE 27
 #define KEY_MASK_CTRL 0x1f
 
-static inline void printw_color(int pair, const char *fmt, ...) {
+static inline void printw_attrs(int attrs, const char *fmt, ...) {
     va_list va;
     va_start(va, fmt);
-    attron(COLOR_PAIR(pair));
+
+    attron(attrs);
     vw_printw(stdscr, fmt, va);
-    attroff(COLOR_PAIR(pair));
+    attroff(attrs);
+
+    va_end(va);
+}
+
+static inline void printw_attrs_cond(int attrs, bool enable, const char *fmt, ...) {
+    va_list va;
+    va_start(va, fmt);
+
+    if (enable) attron(attrs);
+    vw_printw(stdscr, fmt, va);
+    if (enable) attroff(attrs);
+
     va_end(va);
 }
 

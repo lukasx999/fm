@@ -46,7 +46,7 @@ static void curses_init(void) {
     init_pair(PAIR_GREY,        COLOR_GRAY,         COLOR_BLACK);
     init_pair(PAIR_YELLOW,      COLOR_YELLOW,       COLOR_BLACK);
     init_pair(PAIR_SELECTED,    COLOR_BLACK,        COLOR_BRIGHT_WHITE);
-    init_pair(PAIR_SELECTED_HL, COLOR_BLACK,        COLOR_RED);
+    init_pair(PAIR_SELECTED_HL, COLOR_BLACK,        COLOR_BLACK);
 
 }
 
@@ -102,33 +102,35 @@ static void align(int padding) {
     offset += padding;
 }
 
-static void draw_char_colored(char c, int pair, bool change_color) {
-    if (change_color) attron(COLOR_PAIR(pair));
-    printw("%c", c);
-    if (change_color) attroff(COLOR_PAIR(pair));
+static void print_permissions(bool r, bool w, bool x, bool colored) {
+
+    printw_attrs_cond(COLOR_PAIR(r ? PAIR_YELLOW : PAIR_GREY), colored, r ? "r" : "-");
+    printw_attrs_cond(COLOR_PAIR(w ? PAIR_RED    : PAIR_GREY), colored, w ? "w" : "-");
+    printw_attrs_cond(COLOR_PAIR(x ? PAIR_GREEN  : PAIR_GREY), colored, x ? "x" : "-");
 }
 
-static void draw_permissions(const Entry *e, bool sel) {
-    if (e->mode & S_IRUSR) draw_char_colored('r', PAIR_YELLOW, !sel); else draw_char_colored('-', PAIR_GREY, !sel);
-    if (e->mode & S_IWUSR) draw_char_colored('w', PAIR_RED,    !sel); else draw_char_colored('-', PAIR_GREY, !sel);
-    if (e->mode & S_IXUSR) draw_char_colored('x', PAIR_GREEN,  !sel); else draw_char_colored('-', PAIR_GREY, !sel);
+static void draw_permissions(const Entry *e, bool colored) {
 
-    if (e->mode & S_IRGRP) draw_char_colored('r', PAIR_YELLOW, !sel); else draw_char_colored('-', PAIR_GREY, !sel);
-    if (e->mode & S_IWGRP) draw_char_colored('w', PAIR_RED,    !sel); else draw_char_colored('-', PAIR_GREY, !sel);
-    if (e->mode & S_IXGRP) draw_char_colored('x', PAIR_GREEN,  !sel); else draw_char_colored('-', PAIR_GREY, !sel);
-
-    if (e->mode & S_IROTH) draw_char_colored('r', PAIR_YELLOW, !sel); else draw_char_colored('-', PAIR_GREY, !sel);
-    if (e->mode & S_IWOTH) draw_char_colored('w', PAIR_RED,    !sel); else draw_char_colored('-', PAIR_GREY, !sel);
-    if (e->mode & S_IXOTH) draw_char_colored('x', PAIR_GREEN,  !sel); else draw_char_colored('-', PAIR_GREY, !sel);
+    unsigned int m = e->mode;
+    print_permissions(m & S_IRUSR, m & S_IWUSR, m & S_IXUSR, colored);
+    print_permissions(m & S_IRGRP, m & S_IWGRP, m & S_IXGRP, colored);
+    print_permissions(m & S_IROTH, m & S_IWOTH, m & S_IXOTH, colored);
 }
 
-static void draw_filesize(size_t size) {
-    if (size > 1024 * 1024)
-        printw("%luM ", size / (1024 * 1024));
-    else if (size > 1024)
-        printw("%luK ", size / 1024);
-    else
-        printw("%lu ", size);
+static void draw_filesize(size_t size, bool colored) {
+
+    const char *suffix = "";
+
+    if (size > 1024 * 1024) {
+        size = size / (1024 * 1024);
+        suffix = "M";
+
+    } else if (size > 1024) {
+        size = size / 1024;
+        suffix = "K";
+    }
+
+    printw_attrs_cond(COLOR_PAIR(PAIR_BLUE), colored, "%lu%s", size, suffix);
 }
 
 static void draw_entries(
@@ -143,37 +145,39 @@ static void draw_entries(
 
     if (dir->size == 0) {
         move(off_y, off_x);
-        printw_color(PAIR_GREY, "<empty>");
+        printw_attrs(COLOR_PAIR(PAIR_GREY), "<empty>");
     }
 
     for (size_t i=0; i < dir->size; ++i) {
 
         Entry *e = &dir->entries[i];
-        bool sel = i == (size_t) fm->cursor;
+        bool cur = i == (size_t) fm->cursor;
+        bool sel = fm_is_selected(fm, e->abspath);
 
         move(i + off_y, off_x);
 
-        if (fm_is_selected(fm, e->abspath)) {
+        if (sel)
             printw(">");
-        }
         align(4);
 
-        attron(COLOR_PAIR(sel ? PAIR_SELECTED : PAIR_WHITE));
-        draw_permissions(e, sel);
+        if (cur)
+            attron(COLOR_PAIR(PAIR_SELECTED));
+        draw_permissions(e, !cur);
         align(14);
 
-        attron(COLOR_PAIR(sel ? PAIR_SELECTED : PAIR_BLUE));
-        draw_filesize(e->size);
+        attron(COLOR_PAIR(cur ? PAIR_SELECTED : PAIR_BLUE));
+        draw_filesize(e->size, !cur);
         align(10);
 
-        attron(COLOR_PAIR(sel ? PAIR_SELECTED : PAIR_GREEN));
+        attron(COLOR_PAIR(cur ? PAIR_SELECTED : PAIR_GREEN));
         printw("%s", e->type);
         align(10);
 
-        if (e->dtype == DT_DIR) attron(A_BOLD);
+        if (e->dtype == DT_DIR)
+            attron(A_BOLD);
 
         attron(COLOR_PAIR(
-            sel
+            cur
             ? PAIR_SELECTED
             : e->dtype == DT_DIR
             ? PAIR_BLUE
@@ -201,8 +205,7 @@ static char *show_prompt(const char *prompt) {
     memset(buf, 0, bufsize * sizeof(char));
     size_t i = 0;
 
-    bool done = false;
-    while (!done) {
+    while (1) {
 
         move(y - offsety, 0);
         clrtoeol();
@@ -211,9 +214,18 @@ static char *show_prompt(const char *prompt) {
         int ch = getch();
         switch (ch) {
 
+            case 'u' & KEY_MASK_CTRL:
+                memset(buf, 0, bufsize * sizeof(char));
+                i = 0;
+                break;
+
             case KEY_ESCAPE:
+                free(buf);
+                return NULL;
+                break;
+
             case KEY_RETURN:
-                done = true;
+                return buf;
                 break;
 
             case KEY_BACKSPACE:
@@ -233,7 +245,8 @@ static char *show_prompt(const char *prompt) {
 
     }
 
-    return buf;
+    assert(!"unreachable");
+
 }
 
 int main(void) {
@@ -294,6 +307,7 @@ int main(void) {
                 free(cmd);
             } break;
 
+            case '\t':
             case 's':
             case ' ':
                 fm_toggle_select(&fm);
@@ -301,7 +315,8 @@ int main(void) {
 
             case KEY_RETURN: {
                 char *cmd = show_prompt("exec");
-                fm_exec(&fm, cmd, exit_routine);
+                if (cmd != NULL)
+                    fm_exec(&fm, cmd, exit_routine);
                 // BUG: memory leak as execve() replaces current process
                 // and cmd never gets free'd
             } break;

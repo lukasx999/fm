@@ -32,6 +32,13 @@ static const char *filetype_repr(unsigned char filetype) {
     }
 }
 
+static bool can_open_dir(const char *dir) {
+    DIR *dirp = opendir(dir);
+    bool can_open = dirp != NULL;
+    closedir(dirp);
+    return can_open;
+}
+
 static size_t dir_get_filecount(DIR *dir) {
 
     size_t filecount = 0;
@@ -118,7 +125,7 @@ static void load_dir(FileManager *fm) {
 
 static void reload_dir(FileManager *fm) {
     free(fm->dir.entries); // deallocate old dir
-    load_dir(fm); // allocate new one
+    load_dir(fm);          // allocate new one
 }
 
 void fm_init(FileManager *fm, const char *dir) {
@@ -156,6 +163,9 @@ static void append_cwd(FileManager *fm, const char *dir) {
 
     char buf[PATH_MAX + NAME_MAX] = { 0 };
     snprintf(buf, ARRAY_LEN(buf), "%s/%s", fm->cwd, dir);
+
+    if (!can_open_dir(buf)) return;
+
     char *err = realpath(buf, fm->cwd);
     assert(err != NULL);
 
@@ -170,14 +180,15 @@ void fm_cd(FileManager *fm) {
     if (fm->cursor == -1) return;
     const Entry *entry = &fm->dir.entries[fm->cursor];
 
-    if (entry->dtype != DT_DIR)
-        return;
+    if (entry->dtype != DT_DIR) return;
 
     const char *subdir = entry->name;
     append_cwd(fm, subdir);
 }
 
 void fm_cd_abs(FileManager *fm, const char *path) {
+    if (!can_open_dir(path)) return;
+
     memset(fm->cwd, 0, ARRAY_LEN(fm->cwd));
     strncpy(fm->cwd, path, ARRAY_LEN(fm->cwd));
     reload_dir(fm);
