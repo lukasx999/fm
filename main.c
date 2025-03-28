@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <fcntl.h>
 
 #include <sys/stat.h>
 
@@ -13,6 +14,7 @@
 
 #include "fm.h"
 #include "next.h"
+#include "util.h"
 
 
 
@@ -202,6 +204,7 @@ static char *show_prompt(const char *prompt) {
 
     size_t bufsize = getmaxx(stdscr) - strlen(prompt) - strlen(": ");
     char *buf = malloc(bufsize * sizeof(char));
+    NONNULL(buf);
     memset(buf, 0, bufsize * sizeof(char));
     size_t i = 0;
 
@@ -239,19 +242,24 @@ static char *show_prompt(const char *prompt) {
 
                 if (isascii(ch))
                     buf[i++] = (char) ch;
+
                 break;
 
         }
 
     }
 
-    assert(!"unreachable");
+    UNREACHABLE
 
 }
 
-int main(void) {
 
-    const char *startdir = "./test/";
+
+int main(int argc, char **argv) {
+
+    const char *startdir = argc > 1
+        ? argv[1]
+        : ".";
 
     FileManager fm = { 0 };
     fm_init(&fm, startdir);
@@ -304,8 +312,7 @@ int main(void) {
 
             case 'c': {
                 char *cmd = show_prompt("run cmd");
-                // TODO: run cmd on all selected entries
-                // `{}` or `%` represents current filename
+                fm_run_cmd_selected(&fm, cmd);
                 free(cmd);
             } break;
 
@@ -342,5 +349,5 @@ int main(void) {
 
     fm_destroy(&fm);
 
-    return 0;
+    return EXIT_SUCCESS;
 }

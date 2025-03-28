@@ -54,6 +54,7 @@ void fm_toggle_cursor_wrapping (FileManager *fm);
 void fm_toggle_select          (FileManager *fm);
 Entry *fm_get_current          (const FileManager *fm);
 bool fm_is_selected            (const FileManager *fm, const char *path);
+void fm_run_cmd_selected       (const FileManager *fm, const char *cmd);
 
 
 

@@ -12,6 +12,7 @@
 #include <sys/wait.h>
 
 #include "fm.h"
+#include "util.h"
 
 
 
@@ -70,22 +71,22 @@ static int compare_entries(const void *a, const void *b) {
     : dircmp;
 }
 
-// dir == NULL => reload
-static void load_dir(FileManager *fm, const char *dir) {
+// returns -1 if `dir` could not be opened
+// reload cwd if `dir` is NULL
+static int load_dir(FileManager *fm, const char *dir) {
 
-    if (dir == NULL)
-        dir = fm->cwd;
+    if (dir == NULL) dir = fm->cwd;
 
     DIR *dirp = opendir(dir);
-    if (dirp == NULL) return;
+    if (dirp == NULL) return -1;
 
     char *err = realpath(dir, fm->cwd);
-    assert(err != NULL);
+    NONNULL(err);
 
     // some space may be wasted, because of ignoring hidden files
     size_t filecount = dir_get_filecount(dirp);
     Entry *entries = malloc(sizeof(Entry) * filecount);
-    assert(entries != NULL);
+    NONNULL(entries);
     size_t i = 0;
 
     struct dirent *entry = NULL;
@@ -138,6 +139,7 @@ static void load_dir(FileManager *fm, const char *dir) {
     // after loading dir with less entries than last one, move the cursor back
     // if its out of bounds
     check_cursor_bounds(fm);
+    return 0;
 }
 
 void fm_init(FileManager *fm, const char *dir) {
@@ -150,18 +152,16 @@ void fm_init(FileManager *fm, const char *dir) {
         .wrap_cursor   = true,
     };
 
-    char *err = realpath(dir, fm->cwd);
-    if (err == NULL) {
+    int err = load_dir(fm, dir);
+    if (err == -1) {
         fprintf(
             stderr,
             "Failed to open directory `%s`: %s\n",
             dir,
             strerror(errno)
         );
-        exit(1);
+        exit(EXIT_FAILURE);
     }
-
-    load_dir(fm, dir);
 
 }
 
@@ -277,4 +277,14 @@ void fm_toggle_select(FileManager *fm) {
 
 bool fm_is_selected(const FileManager *fm, const char *path) {
     return fm_search_selection(fm, path) != -1;
+}
+
+void fm_run_cmd_selected(const FileManager *fm, const char *cmd) {
+    Selections *sel = &fm->sel;
+
+
+    // for (size_t i=0; i < sel->size; ++i) {
+    //     int err = execlp();
+    // }
+
 }
