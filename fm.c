@@ -194,6 +194,7 @@ void fm_go_up(FileManager *fm) {
 
     if (fm->cursor > 0)
         fm->cursor--;
+
     else if (fm->wrap_cursor)
         fm->cursor = fm->dir.size-1;
 }
@@ -203,6 +204,7 @@ void fm_go_down(FileManager *fm) {
 
     if ((size_t) fm->cursor != fm->dir.size - 1)
         fm->cursor++;
+
     else if (fm->wrap_cursor)
         fm->cursor = 0;
 }
