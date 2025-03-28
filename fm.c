@@ -132,7 +132,6 @@ void fm_init(FileManager *fm, const char *dir) {
         .cursor        = 0,
         .cwd           = { 0 },
         .dir           = { .entries = NULL, .size = 0 },
-        .sel           = { .paths = { { 0 } }, .size = 0 },
         .show_hidden   = false,
         .wrap_cursor   = true,
     };
@@ -265,12 +264,12 @@ void fm_toggle_select(FileManager *fm) {
 
     } else {
         // Delete
+        sel->size--;
         memmove(
             sel->paths + i,
             sel->paths + i + 1,
-            (sel->size - i - 1) * sizeof(char*)
+            (sel->size - i) * PATH_MAX
         );
-        sel->size--;
 
     }
 }
