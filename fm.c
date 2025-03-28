@@ -268,7 +268,7 @@ void fm_toggle_select(FileManager *fm) {
         memmove(
             sel->paths + i,
             sel->paths + i + 1,
-            (sel->size - i) * PATH_MAX
+            (sel->size - i) * sizeof(*sel->paths)
         );
 
     }
