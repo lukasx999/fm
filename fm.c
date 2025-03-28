@@ -102,7 +102,13 @@ static void load_dir(FileManager *fm, const char *dir) {
             .dtype   = entry->d_type,
         };
 
-        snprintf(e.abspath, ARRAY_LEN(e.abspath), "%s/%s", fm->cwd, entry->d_name);
+        snprintf(
+            e.abspath,
+            ARRAY_LEN(e.abspath),
+            "%s/%s",
+            fm->cwd,
+            entry->d_name
+        );
 
         struct stat statbuf = { 0 };
         stat(e.abspath, &statbuf);

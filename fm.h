@@ -12,6 +12,7 @@
 typedef struct {
     char name[NAME_MAX];
     char abspath[PATH_MAX];
+    // char abspath[PATH_MAX + NAME_MAX + 1];
     const char *type;
     unsigned int dtype;
     size_t size;
