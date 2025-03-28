@@ -46,7 +46,6 @@ void fm_cd                     (FileManager *fm);
 void fm_cd_parent              (FileManager *fm);
 void fm_go_down                (FileManager *fm);
 void fm_go_up                  (FileManager *fm);
-void fm_cd_home                (FileManager *fm);
 void fm_cd_abs                 (FileManager *fm, const char *path);
 void fm_exec                   (const FileManager *fm, const char *bin, void (*exit_routine)(void));
 void fm_toggle_hidden          (FileManager *fm);

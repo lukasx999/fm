@@ -70,13 +70,17 @@ static int compare_entries(const void *a, const void *b) {
     : dircmp;
 }
 
-static void load_dir(FileManager *fm) {
+// dir == NULL => reload
+static void load_dir(FileManager *fm, const char *dir) {
 
-    // deallocate old dir, will do nothing when initializing as entries is NULL
-    free(fm->dir.entries);
+    if (dir == NULL)
+        dir = fm->cwd;
 
-    DIR *dirp = opendir(fm->cwd);
-    assert(dirp != NULL);
+    DIR *dirp = opendir(dir);
+    if (dirp == NULL) return;
+
+    char *err = realpath(dir, fm->cwd);
+    assert(err != NULL);
 
     // some space may be wasted, because of ignoring hidden files
     size_t filecount = dir_get_filecount(dirp);
@@ -116,10 +120,14 @@ static void load_dir(FileManager *fm) {
     qsort(entries, i, sizeof(Entry), compare_entries);
     closedir(dirp);
 
+    // deallocate old dir, will do nothing when initializing as entries is NULL
+    free(fm->dir.entries);
+
     fm->dir = (Directory) {
         .size    = i,
         .entries = entries,
     };
+
 
     // after loading dir with less entries than last one, move the cursor back
     // if its out of bounds
@@ -147,7 +155,7 @@ void fm_init(FileManager *fm, const char *dir) {
         exit(1);
     }
 
-    load_dir(fm);
+    load_dir(fm, dir);
 
 }
 
@@ -160,12 +168,7 @@ static void append_cwd(FileManager *fm, const char *dir) {
     char buf[PATH_MAX + NAME_MAX] = { 0 };
     snprintf(buf, ARRAY_LEN(buf), "%s/%s", fm->cwd, dir);
 
-    if (!can_open_dir(buf)) return;
-
-    char *err = realpath(buf, fm->cwd);
-    assert(err != NULL);
-
-    load_dir(fm);
+    load_dir(fm, buf);
 }
 
 void fm_cd_parent(FileManager *fm) {
@@ -183,17 +186,7 @@ void fm_cd(FileManager *fm) {
 }
 
 void fm_cd_abs(FileManager *fm, const char *path) {
-    if (!can_open_dir(path)) return;
-
-    memset(fm->cwd, 0, ARRAY_LEN(fm->cwd));
-    strncpy(fm->cwd, path, ARRAY_LEN(fm->cwd));
-    load_dir(fm);
-}
-
-void fm_cd_home(FileManager *fm) {
-    char *home = getenv("HOME");
-    assert(home != NULL);
-    fm_cd_abs(fm, home);
+    load_dir(fm, path);
 }
 
 void fm_go_up(FileManager *fm) {
@@ -235,7 +228,7 @@ void fm_exec(const FileManager *fm, const char *bin, void (*exit_routine)(void))
 
 void fm_toggle_hidden(FileManager *fm) {
     fm->show_hidden = !fm->show_hidden;
-    load_dir(fm);
+    load_dir(fm, NULL);
 }
 
 void fm_toggle_cursor_wrapping(FileManager *fm) {

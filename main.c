@@ -292,9 +292,11 @@ int main(void) {
                 fm_cd_abs(&fm, "/");
                 break;
 
-            case 'H':
-                fm_cd_home(&fm);
-                break;
+            case 'H': {
+                char *home = getenv("HOME");
+                assert(home != NULL);
+                fm_cd_abs(&fm, home);
+            } break;
 
             case '.':
                 fm_toggle_hidden(&fm);
