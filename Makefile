@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -std=c99 -pedantic -ggdb -fsanitize=address,undefined
+CFLAGS=-I./lib -Wall -Wextra -std=c99 -pedantic -ggdb -fsanitize=address,undefined
 LIBS=-lncurses
 DEPS=fm.h next.h
 

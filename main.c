@@ -204,7 +204,7 @@ static char *show_prompt(const char *prompt) {
 
     size_t bufsize = getmaxx(stdscr) - strlen(prompt) - strlen(": ");
     char *buf = malloc(bufsize * sizeof(char));
-    NONNULL(buf);
+    NON_NULL(buf);
     memset(buf, 0, bufsize * sizeof(char));
     size_t i = 0;
 
@@ -249,7 +249,7 @@ static char *show_prompt(const char *prompt) {
 
     }
 
-    UNREACHABLE
+    UNREACHABLE;
 
 }
 

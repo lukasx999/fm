@@ -81,12 +81,12 @@ static int load_dir(FileManager *fm, const char *dir) {
     if (dirp == NULL) return -1;
 
     char *err = realpath(dir, fm->cwd);
-    NONNULL(err);
+    NON_NULL(err);
 
     // some space may be wasted, because of ignoring hidden files
     size_t filecount = dir_get_filecount(dirp);
     Entry *entries = malloc(sizeof(Entry) * filecount);
-    NONNULL(entries);
+    NON_NULL(entries);
     size_t i = 0;
 
     struct dirent *entry = NULL;
@@ -221,19 +221,6 @@ Entry *fm_get_current(const FileManager *fm) {
     : &fm->dir.entries[fm->cursor];
 }
 
-void fm_exec(const FileManager *fm, const char *bin, void (*exit_routine)(void)) {
-    Entry *e = fm_get_current(fm);
-    if (e == NULL)
-        return;
-
-    exit_routine();
-    int err = execlp(bin, bin, e->abspath, NULL);
-    if (err == -1) {
-        fprintf(stderr, "Failed to execute `%s`: %s\n", bin, strerror(errno));
-        exit(1);
-    }
-}
-
 void fm_toggle_hidden(FileManager *fm) {
     fm->show_hidden = !fm->show_hidden;
     load_dir(fm, NULL);
@@ -279,12 +266,45 @@ bool fm_is_selected(const FileManager *fm, const char *path) {
     return fm_search_selection(fm, path) != -1;
 }
 
-void fm_run_cmd_selected(const FileManager *fm, const char *cmd) {
-    Selections *sel = &fm->sel;
+static void run_cmd_on_file(const char *fmt, const char *filepath) {
+    TODO("run cmd on file");
 
-
-    // for (size_t i=0; i < sel->size; ++i) {
-    //     int err = execlp();
+    // size_t bufsize = strlen(cmd) + strlen(path) + 1; // +1 for whitespace
+    // char *cmd_buf = alloca(bufsize);
+    // NON_NULL(cmd_buf);
+    //
+    // strncpy(cmd_buf, cmd, bufsize);
+    // strncat(cmd_buf, " foo", bufsize);
+    //
+    // int ret = system(cmd_buf);
+    // if (ret == -1) {
+    //     fprintf(stderr, "Running cmd `%s` failed: %s", cmd_buf, strerror(errno));
+    //     exit(EXIT_FAILURE);
     // }
+
+}
+
+void fm_exec(const FileManager *fm, const char *bin, void (*exit_routine)(void)) {
+    Entry *e = fm_get_current(fm);
+    if (e == NULL)
+        return;
+
+    exit_routine();
+    int err = execlp(bin, bin, e->abspath, NULL);
+    if (err == -1) {
+        fprintf(stderr, "Failed to execute `%s`: %s\n", bin, strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+}
+
+
+void fm_run_cmd_selected(const FileManager *fm, const char *cmd) {
+    const Selections *sel = &fm->sel;
+
+    TODO("run cmd on selected files");
+
+    for (size_t i=0; i < sel->size; ++i) {
+        const char *path = sel->paths[i];
+    }
 
 }
