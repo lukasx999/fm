@@ -16,7 +16,6 @@
 
 
 
-
 static const char *filetype_repr(unsigned char filetype) {
     switch (filetype) {
         case DT_UNKNOWN: return "unknown";
@@ -296,7 +295,6 @@ void fm_exec(const FileManager *fm, const char *bin, void (*exit_routine)(void))
         exit(EXIT_FAILURE);
     }
 }
-
 
 void fm_run_cmd_selected(const FileManager *fm, const char *cmd) {
     const Selections *sel = &fm->sel;
