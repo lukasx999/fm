@@ -249,7 +249,7 @@ static char *show_prompt(const char *prompt) {
 
     }
 
-    UNREACHABLE;
+    UNREACHABLE();
 
 }
 
