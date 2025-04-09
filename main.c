@@ -326,8 +326,7 @@ int main(int argc, char **argv) {
                 char *cmd = show_prompt("exec");
                 if (cmd != NULL)
                     fm_exec(&fm, cmd, exit_routine);
-                // BUG: memory leak as execve() replaces current process
-                // and cmd never gets free'd
+                // NOTE: technically theres a memory leak here
             } break;
 
             case 'b' & KEY_MASK_CTRL:
